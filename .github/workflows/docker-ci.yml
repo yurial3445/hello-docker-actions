@@ -1,0 +1,37 @@
+name: Docker CI Pipeline - Pull Request Validation
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Código Fonte
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Compilar Imagem Docker da Aplicação
+        run: |
+          docker build -t hello-docker-app:latest .
+
+      - name: Executar Contêiner de Teste em Modo Detached
+        run: |
+          docker run -d -p 8080:80 --name test-container hello-docker-app:latest
+
+      - name: Aguardar Inicialização do Servidor Nginx
+        run: sleep 3
+
+      - name: Validar Resposta da Aplicação via Curl
+        run: |
+          curl --fail http://localhost:8080 || exit 1
+
+      - name: Encerrar e Remover Contêiner de Teste
+        if: always()
+        run: |
+          docker stop test-container || true
+          docker rm test-container || true
